@@ -1,0 +1,68 @@
+name: Pythonic Gitrepo Autodocumentation
+
+on:
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+
+env:
+  # PYTHONMODULE is the smallest directory containing all files that need documentating 
+  # All subdirectories of PYTHONMODULE needs to be recognized as modules by Python.
+  PYTHONMODULE: ""
+  # These env vars are created to configure sphinx-quickstart. See autodoc.sh.
+  PROJECT: ${{ github.repository }}
+  AUTHOR: ${{ github.repository_owner }}
+  Version: ${{ github.ref_name }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+      matrix:
+        python-version: [3.9]
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install sphinx==4.2.0
+        pip install sphinx-rtd-theme
+      # find all depen and install
+        find . -name "requirements.txt" -exec pip install -r {} \;
+        
+    - name: setup git config
+      run: |
+
+      # give git runner dummy configs
+        git config user.name "Anakin Skywalker"
+        git config user.email "iamyourfather@starwars.org"
+
+    - name: setup sphinx
+      run: |
+        bash autodoc.sh
+        cd docs
+
+      # documentation here https://www.sphinx-doc.org/en/master/man/sphinx-apidoc.html
+        sphinx-apidoc -f -e -M -o . ../$PYTHONMODULE
+
+        make html
+        cd ..
+        mv html/* .
+    
+    - name: Push to gh-pages
+      run: |
+        touch .nojekyll
+        
+      # Standard git operations
+        git branch gh-pages
+        git checkout gh-pages
+        git add .
+        git commit -m "gh-pages Updated by ${{github.workflow}}"
+        git push -f --set-u origin gh-pages
+
